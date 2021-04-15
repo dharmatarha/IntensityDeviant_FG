@@ -37,7 +37,7 @@
 %               Intensity-deviant-detection FG task with children at SOTE.
 %**************************************************************************
 
-function [sigOut, stimTypeArray, frameSamps, deviantIndices, stimParams] = genSNRdeviantStimulusBlock_perTrial(params)
+function [sigOut, stimulusTypeArray, frameSamps, deviantIndices, stimParams] = genSNRdeviantStimulusBlock_perTrial(params)
 
 
 %% Settings, preallocation

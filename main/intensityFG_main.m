@@ -48,7 +48,7 @@ function intensityFG_main(subjID, deviantType, detectKeySide)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if nargin ~= 2
-    error('Input args "subjID", "deviantType" and "detectKeySide" are mandatory!');
+    error('Input args "subjID" and "deviantType" are mandatory!');
 end
 if ~isnumeric(subjID) || ~ismember(subjID, 1:99)
     error('Input arg "subjID" should be an integer in range 1:99!');
@@ -79,6 +79,11 @@ detectKeyCode = KbName(params.detectKey);
 % Same for block / task start key and the abort key
 goKeyCode = KbName(params.goKey);
 abortKeyCode = KbName(params.abortKey);
+% if there are multiple keys with the name (e.g. 'Return'), only use the
+% first one
+if numel(detectKeyCode) ~= 1; detectKeyCode = detectKeyCode(1); end
+if numel(goKeyCode) ~= 1; goKeyCode = goKeyCode(1); end
+if numel(abortKeyCode) ~= 1; abortKeyCode = abortKeyCode(1); end
 
 % Define a flag for the auditory deviant type
 if strcmpi(deviantType, 'figure')
@@ -168,7 +173,7 @@ for blockIdx = 1:params.blockNo
         char(10), 'generating stimuli and preallocating / appending response variables...']);
     
     % Generate the stimulus
-    [sigOut, trialTypes, ~, deviantIndices, stimParams] = genSNRdeviantStimulusBlock_perTrial(params, params.N, params.fs);
+    [sigOut, trialTypes, ~, deviantIndices, stimParams] = genSNRdeviantStimulusBlock_perTrial(params);
     
     % Scale the output signal.  First normalize to RMS == 1 and then scale
     % by 'params.dbscl'.
@@ -232,21 +237,22 @@ for blockIdx = 1:params.blockNo
     % Define again the task and the response key for user, just to be safe
     disp([char(10), char(10)]);
     disp('-------------------------------------------------------------');
-    disp('THE TASK IS TO DETECT DEVIANTS IN THE ', upper(deviantType), '!');
-    disp('RESPONSE KEY FOR DEVIANT DETECTION: ', upper(detectKey), '!');
+    disp(['THE TASK IS TO DETECT DEVIANTS IN THE   ', upper(deviantType), '']);
+    disp('-------------------------------------------------------------');
+    disp(['RESPONSE KEY FOR DEVIANT DETECTION:   ', upper(params.detectKey), '']);
     disp('-------------------------------------------------------------');
     disp([char(10), char(10)]);    
     
     
     % start block after user pressed goKey
-    if strcmp(goKey, 'Return')
+    if strcmp(params.goKey, 'Return')
         startKey = 'ENTER'; 
     else
-        startKey = upper(goKey); 
+        startKey = upper(params.goKey); 
     end
     disp([char(10), char(10)]);
     disp('-------------------------------------------------------------');
-    disp('-----------    PRESS ', startKey, ' TO START THE BLOCK!    -----------');
+    disp(['-----------    PRESS ', startKey, ' TO START THE BLOCK!    -----------']);
     disp('-------------------------------------------------------------');
     disp([char(10), char(10)]);
     

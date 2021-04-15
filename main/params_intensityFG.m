@@ -6,7 +6,6 @@ function params = params_intensityFG
 % To be used with intensityFG_main
 %
 
-
 params = struct;
 
 
@@ -20,9 +19,9 @@ params.blockNo = 6;  % Number of blocks:
 params.iti = 1.8;  % set ITI/ISI in secs
 % params.iti = 0.760;  % default value from Darrin & Brigi's experiment
 
-params.detectKey = KbName('space');  % response key
-tmp = KbName('Return'); params.gokey = tmp(1);  % start key
-params.abortKey = KbName('escape');  % abort key
+params.detectKey = 'space';  % response key
+params.goKey = 'Return';  % start key
+params.abortKey = 'escape';  % abort key
 
 %--------------------------------------------------------------------------
 %%% These are the STIMULUS TYPE LABELS
