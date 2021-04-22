@@ -1,17 +1,29 @@
 %**************************************************************************
 % [sigOut,stimTypeArray, frameSamps, deviantIndices, stimParams]...
-%               = genSNRdeviantStimulusBlock_perTrial(params)
+%               = genSNRdeviantStimulusBlock_training(params, FGtypeFLAG))
 %
-% This function generates the primary stimulus used in the 'intensityMMN'
-% experiment where FOUR stimulus types are present, i.e. (1) figure
+% This function generates the stimulus used for training in the 
+% 'intensityFG_training' part of the expeirment. Depending on the
+% "FGtypeFLAG" input arg, either all FOUR stimulus types are used (i.e. (1) figure
 % standard, (2) background standard, (3) figure deviant, and (4) background
-% deviant.
+% deviant) or only TWO (either the two figure or the two background stimuli).
+%
+% IMPORTANT: In order to preserve the meaning of params.trialNo that other
+% parts of the functions might depend on, if only two types of stimuli were
+% requested (when "FGtypeFLAG" is 0 or 1), we generate DOUBLE the usual
+% number of them, so that params.trialNo remains 4*params.N.
+%
 %
 % INPUTS:
 %   params          STRUCT, output of a parameters function, 
 %                   e.g. "params_intensityFG". Needs to include fields for
 %                   all input args of "osullivanTokenIntensityDeviantFig"
 %                   and "osullivanTokenIntensityDeviantback".
+%  FGtypeFLAG       Numeric value, one of 0:2. Determines the types of 
+%                   stimuli requested for the current training block. 
+%                   0 = deviant and non-deviant figure stimuli;
+%                   1 = deviant and non-deviant background stimuli;
+%                   2 = all types of stimuli;
 %
 % OUTPUTS:
 %   sigOut          3D numeric array holding the generated audio signals. 
@@ -27,9 +39,9 @@
 %                   functions.
 %                   
 % USAGE:
-%   params = params_intensityFG;
+%   params = params_intensityFG_training;
 %  [sigOut, conditionList, frameSamps, deviantIndices, stimParams]...
-%               = genSNRdeviantStimulusBlock_perTrial(params)
+%               = genSNRdeviantStimulusBlock_training(params, FGtypeFLAG)
 %
 %
 %  Created: February ??, 2016 by Darrin K. Reed
@@ -37,15 +49,29 @@
 %               Intensity-deviant-detection FG task with children at SOTE.
 %**************************************************************************
 
-function [sigOut, stimulusTypeArray, frameSamps, deviantIndices, stimParams] = genSNRdeviantStimulusBlock_perTrial(params)
+function [sigOut, stimulusTypeArray, frameSamps, deviantIndices, stimParams] = genSNRdeviantStimulusBlock_training(params, FGtypeFLAG)
+
+%% Input checks
+
+if nargin ~= 2
+    error('Function "genSNRdeviantStimulusBlock_training" requires input args "params" and "FGtypeFLAG"!');
+end
 
 
 %% Settings, preallocation
 
 plotMe = 0;  % Flag for plotting spectrogram of each individual sound segment... NOT SUGGESTED TO PLOT!
 
-% Completely random order of stimulus types
-stimulusTypeArray = Shuffle([params.figStandardLabel*ones(params.N,1); params.backStandardLabel*ones(params.N,1); params.figDeviantLabel*ones(params.N,1); params.backDeviantLabel*ones(params.N,1)]);  
+% Generate stimulus type array, depending on FGtypeFLAG, in random order
+if FGtypeFLAG == 0  % only figure stimuli
+    stimulusTypeArray = Shuffle([params.figStandardLabel*ones(2*params.N, 1); params.figDeviantLabel*ones(2*params.N, 1)]);
+elseif FGtypeFLAG == 1  % only background stimuli
+    stimulusTypeArray = Shuffle([params.backStandardLabel*ones(2*params.N, 1); params.backDeviantLabel*ones(2*params.N, 1)]);
+elseif FGtypeFLAG == 2
+    stimulusTypeArray = Shuffle([params.figStandardLabel*ones(params.N, 1); params.backStandardLabel*ones(params.N, 1); params.figDeviantLabel*ones(params.N, 1); params.backDeviantLabel*ones(params.N, 1)]);  
+else
+    error('Wrong value for "FGtypeFLAG", should be one of 0:2!');
+end
 
 % No. of samples per stimulus
 frameSamps = round(params.fs*params.lenNote)*params.numNotesPerToken;  % No. of samples per stimulus

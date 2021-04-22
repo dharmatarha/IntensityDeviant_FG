@@ -1,9 +1,9 @@
-function params = params_intensityFG
-%% Parameters for intensityFG_main
+function params = params_intensityFG_training
+%% Parameters for intensityFG_training
 %
-% USAGE: params = params_intensityFG
+% USAGE: params = params_intensityFG_training
 %
-% To be used with intensityFG_main
+% To be used with intensityFG_training.
 %
 
 params = struct;
@@ -12,16 +12,20 @@ params = struct;
 %% Parameters for overall experiment
 
 params.fs = 44100;  % sampling rate
-params.N = 5;  % Number of each of the four stimulus types per block
+params.N = 3;  % Number of each of the four stimulus types per block
 params.dbscl = -45;  % dB scaling of output signal
-params.trialNo = params.N*4;  % number of trials per block
-params.blockNo = 6;  % Number of blocks:
+params.trialNo = params.N*4;  % number of trials in training block
 params.iti = 1.8;  % set ITI/ISI in secs
 % params.iti = 0.760;  % default value from Darrin & Brigi's experiment
 
 params.detectKey = 'space';  % response key
 params.goKey = 'Return';  % start key
 params.abortKey = 'escape';  % abort key
+
+% files for audio feedback during training, one for correct and one for
+% wrong answers
+params.feedbackCorrectFile = 'intensityFG_correctAnswer.wav';
+params.feedbackWrongFile = 'intensityFG_wrongAnswer.wav';
 
 %--------------------------------------------------------------------------
 %%% These are the STIMULUS TYPE LABELS

@@ -1,7 +1,7 @@
-function intensityFG_main(subjID, deviantType, detectKeySide)
+function intensityFG_main(subjID, deviantType, blockNumber)
 %% Intensity-deviant-detection Figure-ground experiment, main part
 %
-% USAGE: intensityFG_main(subjID, deviantType, detectKeySide) 
+% USAGE: intensityFG_main(subjID, deviantType, blockNumber=1) 
 % 
 % Main experimental function for the Intensity-deviant-detection
 % Figure-ground experiment. 
@@ -15,17 +15,23 @@ function intensityFG_main(subjID, deviantType, detectKeySide)
 %
 % Main parameters are defined in "params_intensityFG".
 %
-% Inputs:
+% Mandatory inputs:
 % subjID            - Numeric value, one of 1:99. Subject ID.
 % deviantType       - Char array, one of {'figure', 'background'}. Determines
 %                   the task: deviant detection in the figure or the
 %                   background.
 %
+% Optional inputs:
+% blockNumber       - Numeric value, one of 1:99. Number (ID) of block to
+%                   start from. Defaults to 1 (=start from first block).
+%                   The overall number of blocks for the study is determined by
+%                   determined by "params.blockNo" in the params struct
+%                   (see "params_intensityFG"). This input arg is for
+%                   restarting the experiment at a certain block number.
+%
 % Outputs:
 % All outputs are saved out into a subject- and run-specific .mat file.
 %
-% NOTE:
-% - Hardcoded 
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -47,19 +53,30 @@ function intensityFG_main(subjID, deviantType, detectKeySide)
 %% Input checks
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if nargin ~= 2
-    error('Input args "subjID" and "deviantType" are mandatory!');
+% check number of inputs
+if ~ismember(nargin, 2:3)    
+    error('Wrong number of input args! Input args "subjID" and "deviantType" are mandatory while input arg "blockNumber" is optional!');
 end
+% check mandatory inputs
 if ~isnumeric(subjID) || ~ismember(subjID, 1:99)
     error('Input arg "subjID" should be an integer in range 1:99!');
 end
 if ~ischar(deviantType) || ~ismember(deviantType, {'figure', 'background'})
     error('Input arg "deviantType" should be either "figure" or "background"!');
 end
+% check optional input
+if nargin == 2
+    blockNumber = 1;
+else
+    if ~isnumeric(blockNumber) || ~ismember(blockNumber, 1:99)
+        error('Input arg "blockNumber" should be an integer in range 1:99!');
+    end
+end
 
 disp([char(10), 'Started the Intensity-deviant-detection Figure-ground experiment with inputs:',...
     char(10), 'Subject ID: ', num2str(subjID),...
-    char(10), 'Deviant part of stimuli: ', deviantType]);
+    char(10), 'Deviant part of stimuli: ', deviantType,...
+    char(10), 'Starting with block number ', num2str(blockNumber)]);
 
 
 
@@ -166,7 +183,7 @@ disp([char(10), 'Done with general settings, preparing for first block...']);
 % set flag for aborting experiment
 abortFlag = 0;
 
-for blockIdx = 1:params.blockNo
+for blockIdx = blockNumber:params.blockNo
   
     % user message
     disp([char(10), 'Preparing block no. ', num2str(blockIdx), ',',...
