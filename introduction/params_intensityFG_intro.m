@@ -1,7 +1,7 @@
 function params = params_intensityFG_intro
 %% Parameters for intensityFG_intro
 %
-% USAGE: params_intensityFG_intro
+% USAGE: params = params_intensityFG_intro
 %
 % To be used with intensityFG_intro
 %
