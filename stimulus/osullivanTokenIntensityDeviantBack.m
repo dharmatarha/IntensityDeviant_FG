@@ -776,7 +776,7 @@ for j = 1:numNotesPerToken
             
             for i = 1:clNot
                 noteF = notesPossible(clNotIndexVals(i,j));
-                if clNotPhaseFLAG ~= 0;
+                if clNotPhaseFLAG ~= 0
                     notePhase = rand(1)*2*pi; 
                 else
                     notePhase = 0*2*pi; 
@@ -819,7 +819,7 @@ for j = 1:numNotesPerToken
                 
                 for tmp = 1:clNot(i)
                     noteF = notesPossible(clNotIndexVals(ctr,j));  
-                    if clNotPhaseFLAG ~= 0;
+                    if clNotPhaseFLAG ~= 0
                         notePhase = rand(1)*2*pi; 
                     else
                         notePhase = 0*2*pi; 
