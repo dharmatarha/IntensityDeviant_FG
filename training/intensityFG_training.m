@@ -1,7 +1,7 @@
-function intensityFG_training(subjID, trainingType, feedback)
+function intensityFG_training(subjID, trainingType, varargin)
 %% Intensity-deviant-detection Figure-ground experiment, training
 %
-% USAGE: intensityFG_training(subjID, trainingType, feedback=1) 
+% USAGE: intensityFG_training(subjID, trainingType, feedback='feedback', serialTrigger='notrigger') 
 % 
 % Function for the training part of the Intensity-deviant-detection
 % Figure-ground experiment. 
@@ -44,9 +44,16 @@ function intensityFG_training(subjID, trainingType, feedback)
 %                   params_intensityFG_training. Must be .wav files with
 %                   sampling rate matching the sampling rate of the
 %                   stimuli.
+% serialTrigger     - Char array, one of {'notrigger', 'trigger'}. Controls
+%                   if the function sends triggers to the serial port 
+%                   for EEG recordings or not. Serial port usage is 
+%                   determined by "params.serial" and "params.trig", 
+%                   from the output of "params_intensityFG.m". 
+%                   Defaults to 'notrigger'.
 %
 % Outputs:
-% All outputs are saved out into a subject- and run-specific .mat file.
+% All outputs are saved out into a subject- and run-specific .mat file. See
+% "saveFcn_intensityFG_training" for details of filename generation.
 %
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -70,9 +77,12 @@ function intensityFG_training(subjID, trainingType, feedback)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % check number of inputs
-if ~ismember(nargin, 2:3)    
-    error('Wrong number of input args! Input args "subjID" and "trainingType" are mandatory while input arg "feedback" is optional!');
+if ~ismember(nargin, 2:4)    
+    error(['Wrong number of input args! Input args "subjID" and ',...
+        '"trainingType" are mandatory while input args "feedback" and ',...
+        '"serialTrigger" are optional!']);
 end
+
 % check mandatory inputs
 if ~isnumeric(subjID) || ~ismember(subjID, 1:99)
     error('Input arg "subjID" should be an integer in range 1:99!');
@@ -80,19 +90,50 @@ end
 if ~isnumeric(trainingType) || ~ismember(trainingType, 1:4)
     error('Input arg "trainingType" should be a numeric value in range 1:4!');
 end
-% check optional input
-if nargin == 2
+
+% check optional inputs
+if ~isempty(varargin)
+    for v = 1:numel(varargin)
+        if ischar(feedback) && ismember(feedback, {'feedback', 'nofeedback'}) && ~exist('feedback', 'var')
+            feedback = varargin{v};
+        elseif ischar(varargin{v}) && ismember(varargin{v}, {'trigger', 'notrigger'}) && ~exist('serialTrigger', 'var')
+            serialTrigger = varargin{v};
+        else
+            error('At least one input arg could not be mapped nicely to "feedback" or "serialTrigger"!');
+        end
+    end  % for v
+end  % if ~isempty
+        
+% assign default values
+if ~exist('feedback', 'var')
     feedback = 'feedback';
-else
-    if ~ischar(feedback) || ~ismember(feedback, {'feedback', 'nofeedback'})
-        error('Input arg "feedback" should be one of {"feedback", "nofeedback"}!');
-    end
+end
+if ~exist('serialTrigger', 'var')
+    serialTrigger = 'trigger';
 end
 
-disp([char(10), 'Started the Intensity-deviant-detection Figure-ground experiment with inputs:',...
+% get logical flag and text for user message from "serialTrigger"
+if strcmp(serialTrigger, 'trigger')
+    triggerFlag = true;
+    triggerText = 'Yes';
+elseif strcmp(serialTrigger, 'notrigger')
+    triggerFlag = false;
+    triggerText = 'No';
+end
+
+% get logical flag for "feedback"
+if strcmp(feedback, 'feedback')
+    feedbackFLAG = 1;
+elseif strcmp(feedback, 'nofeedback')
+    feedbackFLAG = 0;
+end
+
+% user message
+disp([char(10), 'Started the Training portion of the Intensity-deviant-detection Figure-ground experiment with inputs:',...
     char(10), 'Subject ID: ', num2str(subjID),...
     char(10), 'Training type: ', num2str(trainingType),...
-    char(10), 'Feedback after each response: ', feedback]);
+    char(10), 'Feedback after each response: ', feedback,...
+    char(10), 'Triggers on serial port: ', triggerText]);
 
 
 
@@ -106,6 +147,11 @@ Priority(1);
 
 % load parameters
 params = params_intensityFG_training;
+
+% init serial port if triggering was requested
+if triggerFlag
+    serialObj = serial(params.serial.portName);
+end
 
 % Set response key code (response key is set in "params" struct
 detectKeyCode = KbName(params.detectKey);
@@ -138,13 +184,6 @@ elseif trainingType == 2
 elseif ismember(trainingType, [3 4])
     FGtypeFLAG = 2;    
     FGtype = 'figure and background';
-end
-
-% Get a flag for feedback
-if strcmp(feedback, 'feedback')
-    feedbackFLAG = 1;
-elseif strcmp(feedback, 'nofeedback')
-    feedbackFLAG = 0;
 end
 
 % If there is auditory feedback, prepare the sounds
@@ -364,6 +403,12 @@ if abortFlag
     return;
 end   
 
+% block start trigger
+if triggerFlag
+    fprintf(serialObj, params.trig.format, params.trig.blockStart);  % block start trigger
+    fprintf(serialObj, params.trig.format, params.trig.blockStart + trainingType);  % block type (task type) trigger = block start trigger + training type number
+end  
+
 % user message
 disp('Starting...');
 
@@ -378,6 +423,13 @@ for trialIdx = 1:params.trialNo
     % make sure the subject is not pressing the detection key already
     KbReleaseWait;
 
+    % trial start trigger
+    if triggerFlag
+        fprintf(serialObj, params.trig.format, params.trig.trialStart);  % trial start trigger
+        fprintf(serialObj, params.trig.format, params.trig.trialStart + trialIdx);  % trial number trigger = trial start trigger + trial number
+        fprintf(serialObj, params.trig.format, trialTypes(trialIdx));  % trial type trigger, from var "trialTypes" 
+    end      
+    
     % trial start time is determined by block start for first trial,
     % otherwise it depends on feedback:
     % if there is was a feedback sound, trial start is feedback sound start + feedback length + iti 
@@ -390,8 +442,8 @@ for trialIdx = 1:params.trialNo
         else
             trialStartTime = oldTrialStartTime + params.stimLength + params.iti;  % trial start is relative to previous stimulus onset
         end  % if feedbackFLAG && feedbackOnset ~= 0
-    end  % if trialIdx == 1
-
+    end  % if trialIdx == 1  
+    
     % fill audio buffer with next stimuli
     PsychPortAudio('FillBuffer', pahandle, buffer(trialIdx));
 
@@ -406,6 +458,11 @@ for trialIdx = 1:params.trialNo
     % blocking playback start for precision
     audioOnset = PsychPortAudio('Start', pahandle, 1, trialStartTime, 1);        
 
+    % stimulus onset trigger
+    if triggerFlag
+        fprintf(serialObj, params.trig.format, params.trig.soundOnset);
+    end      
+    
     % user message
     disp(['Audio started at ', num2str(audioOnset-trialStartTime), ' secs relative to requested start time']);
     if trialIdx ~= 1
@@ -423,6 +480,11 @@ for trialIdx = 1:params.trialNo
         [keyDown, secs, keyCode] = KbCheck;
         % if subject detected deviant
         if keyDown && find(keyCode) == detectKeyCode
+            % response trigger
+            if triggerFlag
+                fprintf(serialObj, params.trig.format, params.trig.response);
+            end   
+            % set response flag, store RT
             respFlag = 1;
             outData.rt(trialIdx) = secs-audioOnset;
             outData.rtDeviant(trialIdx) = secs-(audioOnset + outData.deviantOnset(trialIdx));

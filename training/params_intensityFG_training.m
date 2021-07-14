@@ -5,6 +5,12 @@ function params = params_intensityFG_training
 %
 % To be used with intensityFG_training.
 %
+% Output: 
+% params    - Struct with its fields defining the stimulus and
+%           experimental procedure parameters
+
+
+%% Init output var
 
 params = struct;
 
@@ -29,6 +35,7 @@ params.feedbackWrongFile = 'intensityFG_wrongAnswer.wav';
 
 %--------------------------------------------------------------------------
 %%% These are the STIMULUS TYPE LABELS
+%%% DO NOT CHANGE THESE VALUES, TREAT THEM AS HARDCODED
 %--------------------------------------------------------------------------
 params.figStandardLabel = 10;  % Figure in FG, no deviant
 params.backStandardLabel = 20;  % No figure in FG, no deviant
@@ -71,6 +78,31 @@ params.deviantNum = params.clFig;  % Number of background tones attributed to th
 
 % For figure deviant stimuli
 params.baseSNR = nan;  % when 'nan', the function calculates an estimate based on the sum(cl)/sum(clNot) ratio
+
+
+%% Parameters for triggers
+
+% Params for triggers, using the serial port
+% (with Micromed SD LTM EEG in mind)
+params.serial.portName = 'COM4';  % For the stimulus PC at SOTE, Szalardy lab
+params.serial.baudRate = 9600;  % safe value, should be supported by everything
+
+% Trigger types
+% Triggers for block type (task type) and trial numbers in the training
+% functions are calculated as "blockStart" + "trialType" and 
+% "trialStart" + trial number, respectively.
+% Keep the above in mind when changing (expanding) block and trial
+% numbers...
+% Also note that trial type triggers are determined by the STIMULUS TYPE
+% LABELS defined above (params.figStandardLabel, ...), so do not use the
+% numbers specified there!
+params.trig.format = '%i';  % triggers are written to the serial port as integers
+params.trig.blockStart = 50;  % at the very start of each block
+params.trig.trialStart = 100;  % at the start of each trial
+params.trig.soundOnset = 81; 
+params.trig.response = 82;
+params.trig.hit = 83;
+params.trig.falseAlarm = 84;
 
 
 return

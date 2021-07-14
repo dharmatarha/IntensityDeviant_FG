@@ -31,7 +31,7 @@ params.abortKey = 'escape';  % abort key
 
 %--------------------------------------------------------------------------
 %%% These are the STIMULUS TYPE LABELS
-%%% DO NOT CHANGE THESE VALUES, TREAT THEM AS HARDCODED FOR NOW
+%%% DO NOT CHANGE THESE VALUES, TREAT THEM AS HARDCODED
 %--------------------------------------------------------------------------
 params.figStandardLabel = 10;  % Figure in FG, no deviant
 params.backStandardLabel = 20;  % No figure in FG, no deviant
