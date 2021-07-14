@@ -31,7 +31,7 @@ Training can be run in four different modes (controlled by input arg `trainingTy
 
 Accordingly, you may set `trainingType` to 1-4. 
 
-Importantly, there is also feedback during training. Responses are always followed by a short auditory feedback, marking accurate / inaccurate answers. The sounds used for the feedback are in `training/intensityFG_correctAnswer.wav` and `training/intensityFG_wrongAnswer.wav`. Alternative files can be specified with the other parameters in `traiing/params_intensityFG_training.m`
+Importantly, there is also feedback during training. Responses are always followed by a short auditory feedback, marking accurate / inaccurate answers. The sounds used for the feedback are in `training/intensityFG_correctAnswer.wav` and `training/intensityFG_wrongAnswer.wav`. Alternative files can be specified with the other parameters in `training/params_intensityFG_training.m`
 
 Run the training with:
 ```
