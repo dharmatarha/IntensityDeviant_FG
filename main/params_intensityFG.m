@@ -5,6 +5,12 @@ function params = params_intensityFG
 %
 % To be used with intensityFG_main
 %
+% Output: 
+% params    - Struct with its fields defining the stimulus and
+%           experimental procedure parameters
+
+
+%% Init output var
 
 params = struct;
 
@@ -12,10 +18,10 @@ params = struct;
 %% Parameters for overall experiment
 
 params.fs = 44100;  % sampling rate
-params.N = 5;  % Number of each of the four stimulus types per block
+params.N = 13;  % Number of each of the four stimulus types per block
 params.dbscl = -45;  % dB scaling of output signal
 params.trialNo = params.N*4;  % number of trials per block
-params.blockNo = 6;  % Number of blocks:
+params.blockNo = 8;  % Number of blocks:
 params.iti = 1.8;  % set ITI/ISI in secs
 % params.iti = 0.760;  % default value from Darrin & Brigi's experiment
 
@@ -25,6 +31,7 @@ params.abortKey = 'escape';  % abort key
 
 %--------------------------------------------------------------------------
 %%% These are the STIMULUS TYPE LABELS
+%%% DO NOT CHANGE THESE VALUES, TREAT THEM AS HARDCODED FOR NOW
 %--------------------------------------------------------------------------
 params.figStandardLabel = 10;  % Figure in FG, no deviant
 params.backStandardLabel = 20;  % No figure in FG, no deviant
@@ -67,6 +74,31 @@ params.deviantNum = params.clFig;  % Number of background tones attributed to th
 
 % For figure deviant stimuli
 params.baseSNR = nan;  % when 'nan', the function calculates an estimate based on the sum(cl)/sum(clNot) ratio
+
+
+%% Parameters for triggers
+
+% Params for triggers, using the serial port
+% (with Micromed SD LTM EEG in mind)
+params.serial.portName = 'COM4';  % For the stimulus PC at SOTE, Szalardy lab
+params.serial.baudRate = 9600;  % safe value, should be supported by everything
+
+% Trigger types
+% Triggers for block and trial numbers in the main experimental functions
+% are calculated as "blockStart" + block number and "trialStart" + trial 
+% number, respectively.
+% Keep the above in mind when changing (expanding) block and trial
+% numbers...
+% Also note that trial type triggers are determined by the STIMULUS TYPE
+% LABELS defined above (params.figStandardLabel, ...), so do not use the
+% numbers specified there!
+params.trig.format = '%i';  % triggers are written to the serial port as integers
+params.trig.blockStart = 50;  % at the very start of each block
+params.trig.trialStart = 100;  % at the start of each trial
+params.trig.soundOnset = 81; 
+params.trig.response = 82;
+params.trig.hit = 83;
+params.trig.falseAlarm = 84;
 
 
 return

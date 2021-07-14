@@ -1,10 +1,12 @@
-function intensityFG_intro
+function intensityFG_intro(serialTrigger)
 %% Function for introducing the four stimuli categories of the Intensity-deviant-detection FG task
 %
-% USAGE: intensityFG_intro
+% USAGE: intensityFG_intro(serialTrigger='notrigger')
+%
 %
 % Simple command line interface for generating and playing stimuli of given
-% types one-by-one. 
+% types one-by-one. Optionally generates triggers for EEG on the serial port.
+%
 % Pressing the keys "1" to "4" generates and plays a stimulus with:
 % "1"   - FG stimulus with Figure, no deviant
 % "2"   - FG stimulus without Figure (only Background), no deviant
@@ -13,6 +15,40 @@ function intensityFG_intro
 %
 % Pressing "escape" aborts the task.
 %
+% Settings / parameters are stored in "params_intensityFG_intro.m", see
+% that function for details.
+%
+% Inputs: 
+% serialTrigger     - Char array, one of {'notrigger', 'trigger'}. Controls
+%                   if the function sends triggers to the serial port 
+%                   for EEG recordings or not. Serial port usage is 
+%                   determined by "params.serial" and "params.trig", 
+%                   from the output of "params_intensityFG_intro.m". 
+%                   Defaults to 'notrigger'.
+%
+% Outputs:
+% The function generates no output. 
+%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Input checks
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% check no. of inputs
+if nargin ~= 1
+    serialTrigger = 'notrigger';
+end
+% check input arg value
+if ~ischar(serialTrigger) || ~ismember(serialTrigger, {'notrigger', 'trigger'})
+    error('Input arg "serialTrigger" should be a char array, one of {"notrigger", "trigger"}!');
+end
+% get logical flag from input
+if strcmp(serialTrigger, 'notrigger')
+    triggerFlag = false;
+elseif strcmp(serialTrigger, 'trigger')
+    triggerFlag = true;
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -24,6 +60,11 @@ Priority(1);
 
 % load all parameters
 params = params_intensityFG_intro;
+
+% init serial port if triggering was requested
+if triggerFlag
+    serialObj = serial(params.serial.portName);
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -93,8 +134,11 @@ disp([char(10), char(10)]);
 abortFlag = 0;
 while 1
     
+    % "request" specifies the type of stimulus requested, it is set to
+    % empty at the beginning of each iteration
     request = [];
     
+    % listen for key press
     [keyDown, ~, keyCode] = KbCheck;
     if keyDown
         if find(keyCode) == KbName('1')
@@ -112,11 +156,17 @@ while 1
         WaitSecs(0.05);
     end
     
+    % if user requested abort, clean up and exit
     if abortFlag 
         Priority(0);
         PsychPortAudio('Stop', pahandle, 1, 1);
         PsychPortAudio('Close', pahandle);
         break;
+    end
+    
+    % if triggers are used, send trial start trigger
+    if triggerFlag
+        fprintf(serialObj, params.trig.format, params.trig.trialStart);
     end
     
     if ~isempty(request)
@@ -162,13 +212,22 @@ while 1
         sigOut = sigOut ./ sqrt(mean(sigOut.^2, 1));  % broadcasting
         sigOut = sigOut .* (10^(params.dbscl/20)); 
 
-        % buffer into PsychPortAudio and play
+        % buffer into PsychPortAudio
         buffer = PsychPortAudio('CreateBuffer', [], sigOut');
         PsychPortAudio('FillBuffer', pahandle, buffer);
+        
+        % play stimulus immediately
         PsychPortAudio('Start', pahandle, 1);
+        
+        % send audio onset trigger if triggers are used
+        if triggerFlag
+            fprintf(serialObj, params.trig.format, params.trig.soundOnset);
+        end
+            
+        % wait for key release before listening to new stimulus request    
         KbReleaseWait;
         
     end  % if ~isempty(request)
     
     
-end
+end  % while

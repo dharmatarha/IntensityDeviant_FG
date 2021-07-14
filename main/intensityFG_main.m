@@ -1,7 +1,7 @@
-function intensityFG_main(subjID, deviantType, blockNumber)
+function intensityFG_main(subjID, deviantType, varargin)
 %% Intensity-deviant-detection Figure-ground experiment, main part
 %
-% USAGE: intensityFG_main(subjID, deviantType, blockNumber=1) 
+% USAGE: intensityFG_main(subjID, deviantType, blockNumber=1, serialTrigger='notrigger') 
 % 
 % Main experimental function for the Intensity-deviant-detection
 % Figure-ground experiment. 
@@ -28,9 +28,16 @@ function intensityFG_main(subjID, deviantType, blockNumber)
 %                   determined by "params.blockNo" in the params struct
 %                   (see "params_intensityFG"). This input arg is for
 %                   restarting the experiment at a certain block number.
+% serialTrigger     - Char array, one of {'notrigger', 'trigger'}. Controls
+%                   if the function sends triggers to the serial port 
+%                   for EEG recordings or not. Serial port usage is 
+%                   determined by "params.serial" and "params.trig", 
+%                   from the output of "params_intensityFG.m". 
+%                   Defaults to 'notrigger'.
 %
 % Outputs:
-% All outputs are saved out into a subject- and run-specific .mat file.
+% All outputs are saved out into a subject- and run-specific .mat file. See
+% "saveFcn_intensityFG" for details of filename generation.
 %
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -54,9 +61,12 @@ function intensityFG_main(subjID, deviantType, blockNumber)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % check number of inputs
-if ~ismember(nargin, 2:3)    
-    error('Wrong number of input args! Input args "subjID" and "deviantType" are mandatory while input arg "blockNumber" is optional!');
+if ~ismember(nargin, 2:4)    
+    error(['Wrong number of input args! Input args "subjID" ',...
+        'and "deviantType" are mandatory while input args "blockNumber" ',...
+        'and "serialTrigger" are optional!']);
 end
+
 % check mandatory inputs
 if ~isnumeric(subjID) || ~ismember(subjID, 1:99)
     error('Input arg "subjID" should be an integer in range 1:99!');
@@ -64,19 +74,43 @@ end
 if ~ischar(deviantType) || ~ismember(deviantType, {'figure', 'background'})
     error('Input arg "deviantType" should be either "figure" or "background"!');
 end
-% check optional input
-if nargin == 2
+
+% check optional inputs
+if ~isempty(varargin)
+    for v = 1:numel(varargin)
+        if isnumeric(varargin{v}) && ismember(varargin{v}, 1:99) && ~exist('blockNumber', 'var')
+            blockNumber = varargin{v};
+        elseif ischar(varargin{v}) && ismember(varargin{v}, {'trigger', 'notrigger'}) && ~exist('serialTrigger', 'var')
+            serialTrigger = varargin{v};
+        else
+            error('At least one input arg could not be mapped nicely to "blockNumber" or "serialTrigger"!');
+        end
+    end  % for v
+end  % if ~isempty
+
+% assign default values
+if ~exist('blockNumber', 'var')
     blockNumber = 1;
-else
-    if ~isnumeric(blockNumber) || ~ismember(blockNumber, 1:99)
-        error('Input arg "blockNumber" should be an integer in range 1:99!');
-    end
+end
+if ~exist('serialTrigger', 'var')
+    serialTrigger = 'notrigger';
 end
 
+% get logical flag and text for user message from "serialTrigger"
+if strcmp(serialTrigger, 'trigger')
+    triggerFlag = true;
+    triggerText = 'Yes';
+elseif strcmp(serialTrigger, 'notrigger')
+    triggerFlag = false;
+    triggerText = 'No';
+end
+
+% user message 
 disp([char(10), 'Started the Intensity-deviant-detection Figure-ground experiment with inputs:',...
     char(10), 'Subject ID: ', num2str(subjID),...
     char(10), 'Deviant part of stimuli: ', deviantType,...
-    char(10), 'Starting with block number ', num2str(blockNumber)]);
+    char(10), 'Starting with block number ', num2str(blockNumber),...
+    char(10), 'Triggers on serial port: ', triggerText]);
 
 
 
@@ -90,6 +124,11 @@ Priority(1);
 
 % load parameters
 params = params_intensityFG;
+
+% init serial port if triggering was requested
+if triggerFlag
+    serialObj = serial(params.serial.portName);
+end
 
 % Set response key code (response key is set in "params" struct
 detectKeyCode = KbName(params.detectKey);
@@ -216,7 +255,7 @@ for blockIdx = blockNumber:params.blockNo
         outData.trialTypes = nan(params.trialNo, params.blockNo);  % stimulus / trial type, numeric code
     end
     
-    % Collect trial / stimlus type information for block
+    % Collect trial / stimulus type information for block
     outData.trialTypes(:, blockIdx) = trialTypes;
     
     % Collect deviant onsets (in time, relative to audio onset)
@@ -295,7 +334,13 @@ for blockIdx = blockNumber:params.blockNo
         PsychPortAudio('Close');
         return;
     end   
-        
+    
+    % block start trigger
+    if triggerFlag
+        fprintf(serialObj, params.trig.format, params.trig.blockStart);  % block start trigger
+        fprintf(serialObj, params.trig.format, params.trig.blockStart + blockIdx);  % block number trigger = block start trigger + block number
+    end    
+    
     % user message
     disp('Starting...');
     
@@ -309,6 +354,13 @@ for blockIdx = blockNumber:params.blockNo
         
         % make sure the subject is not pressing the detection key already
         KbReleaseWait;
+        
+        % trial start trigger
+        if triggerFlag
+            fprintf(serialObj, params.trig.format, params.trig.trialStart);  % trial start trigger
+            fprintf(serialObj, params.trig.format, params.trig.trialStart + trialIdx);  % trial number trigger = trial start trigger + trial number
+            fprintf(serialObj, params.trig.format, trialTypes(trialIdx));  % trial type trigger, from var "trialTypes" 
+        end
         
         % trial start time is determined by block start for first trial,
         % otherwise it is last trial + audio length + iti
@@ -332,6 +384,11 @@ for blockIdx = blockNumber:params.blockNo
         % blocking playback start for precision
         audioOnset = PsychPortAudio('Start', pahandle, 1, trialStartTime, 1);        
         
+        % stimulus onset trigger
+        if triggerFlag
+            fprintf(serialObj, params.trig.format, params.trig.soundOnset);
+        end        
+        
         % user message
         disp(['Audio started at ', num2str(audioOnset-trialStartTime), ' secs relative to requested start time']);
         if trialIdx ~= 1
@@ -349,6 +406,11 @@ for blockIdx = blockNumber:params.blockNo
             [keyDown, secs, keyCode] = KbCheck;
             % if subject detected deviant
             if keyDown && find(keyCode) == detectKeyCode
+                % response trigger
+                if triggerFlag
+                    fprintf(serialObj, params.trig.format, params.trig.response);
+                end      
+                % set response flag, store RT
                 respFlag = 1;
                 outData.rt(trialIdx, blockIdx) = secs-audioOnset;
                 outData.rtDeviant(trialIdx, blockIdx) = secs-(audioOnset + outData.deviantOnset(trialIdx, blockIdx));
@@ -387,6 +449,17 @@ for blockIdx = blockNumber:params.blockNo
                 outData.accuracy(trialIdx, blockIdx) = 0;
             end
         end
+        
+        % Hit / False alarm trigger
+        if triggerFlag
+            % if response was a HIT
+            if respFlag && accFlag
+                fprintf(serialObj, params.trig.format, params.trig.hit);
+            % if response was a FALSE ALARM
+            elseif respFlag && ~accFlag
+                fprintf(serialObj, params.trig.format, params.trig.falseAlarm);
+            end 
+        end  % if triggerFlag
         
         % audio onset becomes the last trial start
         oldTrialStartTime = audioOnset;
@@ -460,13 +533,21 @@ for blockIdx = blockNumber:params.blockNo
     % Methods and Materials section under 'Behavioral Analysis'.
     % Ultimately, it is based off of Macmillan and Kaplan (1985)
     % Psychol. Bulletin, vol 98, pp. 185-199 
-    if percentCorrectDetect == 100; pHit = 1-1/(2*sum(deviantMask)); 
-    elseif percentCorrectDetect == 0; pHit = 1/(2*sum(deviantMask));
-    else pHit = percentCorrectDetect/100; end
+    if percentCorrectDetect == 100
+        pHit = 1-1/(2*sum(deviantMask)); 
+    elseif percentCorrectDetect == 0 
+        pHit = 1/(2*sum(deviantMask));
+    else
+        pHit = percentCorrectDetect/100;
+    end
 
-    if falseAlarmTargetStandard == 0; pFA = 1/(2*sum(deviantMask)); 
-    elseif falseAlarmTargetStandard == 100; pFA = 1-1/(2*sum(deviantMask)); 
-    else pFA = falseAlarmTargetStandard/100; end
+    if falseAlarmTargetStandard == 0 
+        pFA = 1/(2*sum(deviantMask)); 
+    elseif falseAlarmTargetStandard == 100
+        pFA = 1-1/(2*sum(deviantMask));
+    else
+        pFA = falseAlarmTargetStandard/100; 
+    end
 
     dprimeResult = dprime(pHit, pFA);
     fprintf(['The d'' value for relevant "target" conditions... ' , num2str(dprimeResult), '. \n'])
