@@ -64,6 +64,7 @@ params = params_intensityFG_intro;
 % init serial port if triggering was requested
 if triggerFlag
     serialObj = serial(params.serial.portName);
+    fopen(serialObj);
 end
 
 
@@ -161,15 +162,20 @@ while 1
         Priority(0);
         PsychPortAudio('Stop', pahandle, 1, 1);
         PsychPortAudio('Close', pahandle);
+        if triggerFlag
+            fclose(serialObj);
+        end
         break;
     end
     
-    % if triggers are used, send trial start trigger
-    if triggerFlag
-        fprintf(serialObj, params.trig.format, params.trig.trialStart);
-    end
-    
+    % if user requested stimulus example
     if ~isempty(request)
+        
+        % if triggers are used, send trial start trigger
+        if triggerFlag
+            fprintf(serialObj, params.trig.format, params.trig.trialStart);
+        end        
+        
         % Create the (random) indices for the deviant
         tmp = randi([params.deviantIndMin, params.deviantIndMax],1);
         deviantInd = tmp:(tmp+params.deviantDuration-1);

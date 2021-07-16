@@ -66,8 +66,8 @@ params.upFreq = 5000;
 params.maxSemitoneStep = 2;
 params.minSemitoneStep = 0.5;
 
-params.deviantIndMin = 7;  % Earliest chord that the deviant can begin
-params.deviantIndMax = 11;  % Last chord that the deviant can begin
+params.deviantIndMin = 8;  % Earliest chord that the deviant can begin
+params.deviantIndMax = 8;  % Last chord that the deviant can begin
 params.deviantDuration = 6;  % Integer duration in # of chords for the deviant
 
 params.deviantSNR = -25;
@@ -88,15 +88,12 @@ params.serial.portName = 'COM4';  % For the stimulus PC at SOTE, Szalardy lab
 params.serial.baudRate = 9600;  % safe value, should be supported by everything
 
 % Trigger types
-% Triggers for block type (task type) and trial numbers in the training
-% functions are calculated as "blockStart" + "trialType" and 
-% "trialStart" + trial number, respectively.
-% Keep the above in mind when changing (expanding) block and trial
-% numbers...
-% Also note that trial type triggers are determined by the STIMULUS TYPE
+% Triggers for block type (task type) in the training
+% function is calculated as "blockStart" + "trainingType".
+% Note that trial type triggers are determined by the STIMULUS TYPE
 % LABELS defined above (params.figStandardLabel, ...), so do not use the
 % numbers specified there!
-params.trig.format = '%i';  % triggers are written to the serial port as integers
+params.trig.format = '%s'; 
 params.trig.blockStart = 50;  % at the very start of each block
 params.trig.trialStart = 100;  % at the start of each trial
 params.trig.soundOnset = 81; 

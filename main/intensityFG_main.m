@@ -1,7 +1,7 @@
 function intensityFG_main(subjID, deviantType, varargin)
 %% Intensity-deviant-detection Figure-ground experiment, main part
 %
-% USAGE: intensityFG_main(subjID, deviantType, blockNumber=1, serialTrigger='notrigger') 
+% USAGE: intensityFG_main(subjID, deviantType, blockNumber=1, serialTrigger='trigger') 
 % 
 % Main experimental function for the Intensity-deviant-detection
 % Figure-ground experiment. 
@@ -33,7 +33,7 @@ function intensityFG_main(subjID, deviantType, varargin)
 %                   for EEG recordings or not. Serial port usage is 
 %                   determined by "params.serial" and "params.trig", 
 %                   from the output of "params_intensityFG.m". 
-%                   Defaults to 'notrigger'.
+%                   Defaults to 'trigger'.
 %
 % Outputs:
 % All outputs are saved out into a subject- and run-specific .mat file. See
@@ -93,7 +93,7 @@ if ~exist('blockNumber', 'var')
     blockNumber = 1;
 end
 if ~exist('serialTrigger', 'var')
-    serialTrigger = 'notrigger';
+    serialTrigger = 'trigger';
 end
 
 % get logical flag and text for user message from "serialTrigger"
@@ -128,6 +128,7 @@ params = params_intensityFG;
 % init serial port if triggering was requested
 if triggerFlag
     serialObj = serial(params.serial.portName);
+    fopen(serialObj);
 end
 
 % Set response key code (response key is set in "params" struct
@@ -332,12 +333,14 @@ for blockIdx = blockNumber:params.blockNo
         RestrictKeysForKbCheck([]);
         PsychPortAudio('Stop', pahandle, 1, 1);
         PsychPortAudio('Close');
+        if triggerFlag
+            fclose(serialObj);
+        end
         return;
     end   
     
     % block start trigger
     if triggerFlag
-        fprintf(serialObj, params.trig.format, params.trig.blockStart);  % block start trigger
         fprintf(serialObj, params.trig.format, params.trig.blockStart + blockIdx);  % block number trigger = block start trigger + block number
     end    
     
@@ -355,13 +358,6 @@ for blockIdx = blockNumber:params.blockNo
         % make sure the subject is not pressing the detection key already
         KbReleaseWait;
         
-        % trial start trigger
-        if triggerFlag
-            fprintf(serialObj, params.trig.format, params.trig.trialStart);  % trial start trigger
-            fprintf(serialObj, params.trig.format, params.trig.trialStart + trialIdx);  % trial number trigger = trial start trigger + trial number
-            fprintf(serialObj, params.trig.format, trialTypes(trialIdx));  % trial type trigger, from var "trialTypes" 
-        end
-        
         % trial start time is determined by block start for first trial,
         % otherwise it is last trial + audio length + iti
         if trialIdx == 1
@@ -371,10 +367,15 @@ for blockIdx = blockNumber:params.blockNo
         end
         
         % fill audio buffer with next stimuli
-        PsychPortAudio('FillBuffer', pahandle, buffer(trialIdx));
+        PsychPortAudio('FillBuffer', pahandle, buffer(trialIdx));      
         
         % user message
         disp([char(10), 'Trial ', num2str(trialIdx), ', block ', num2str(blockIdx)]);
+        
+        % trial type trigger
+        if triggerFlag
+            fprintf(serialObj, params.trig.format, trialTypes(trialIdx));  % trial type trigger, from var "trialTypes" 
+        end           
         
         % wait till we are 50 ms from the start of the playback
         while trialStartTime - GetSecs >= 0.05
@@ -429,6 +430,9 @@ for blockIdx = blockNumber:params.blockNo
             RestrictKeysForKbCheck([]);
             PsychPortAudio('Stop', pahandle, 1, 1);
             PsychPortAudio('Close');
+            if triggerFlag
+                fclose(serialObj);
+            end            
             return;
         end        
         
@@ -454,9 +458,11 @@ for blockIdx = blockNumber:params.blockNo
         if triggerFlag
             % if response was a HIT
             if respFlag && accFlag
+                WaitSecs(0.1);   % workaround for buggy trigger recognition by Micromed SD LTM EEG, need break between response trigger and hit/false alarm trigger
                 fprintf(serialObj, params.trig.format, params.trig.hit);
             % if response was a FALSE ALARM
             elseif respFlag && ~accFlag
+                WaitSecs(0.1);   % workaround for buggy trigger recognition by Micromed SD LTM EEG, need break between response trigger and hit/false alarm trigger
                 fprintf(serialObj, params.trig.format, params.trig.falseAlarm);
             end 
         end  % if triggerFlag
@@ -579,7 +585,10 @@ saveFcn_intensityFG(subjID, deviantType, expName, 'final',...
 Priority(0);
 RestrictKeysForKbCheck([]);
 PsychPortAudio('Stop', pahandle, 1, 1);
-PsychPortAudio('Close');                
+PsychPortAudio('Close');       
+if triggerFlag
+    fclose(serialObj);
+end
                 
 fprintf('-----------------------------------------------\n')
 fprintf('Experiment completed.  Thanks for your time!\n')
